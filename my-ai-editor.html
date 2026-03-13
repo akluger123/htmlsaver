@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Code Editor</title>
+    <style>
+        body { margin: 0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; background: #121212; color: white; }
+        .ai-zone { background: #1e1e1e; padding: 20px; border-bottom: 2px solid #333; display: flex; gap: 10px; }
+        #user-request { flex-grow: 1; padding: 12px; border-radius: 4px; border: 1px solid #444; background: #2d2d2d; color: white; }
+        .main { display: flex; flex-grow: 1; overflow: hidden; }
+        textarea { width: 50%; background: #1e1e1e; color: #76d0fb; padding: 20px; border: none; border-right: 2px solid #333; font-family: monospace; resize: none; outline: none; }
+        iframe { width: 50%; background: white; border: none; }
+        button { background: #007bff; color: white; border: none; padding: 0 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <div class="ai-zone">
+        <input type="text" id="user-request" placeholder="Ask AI to change something... (e.g. 'Make the background green')">
+        <button onclick="askAI()">Update Code</button>
+    </div>
+
+    <div class="main">
+        <textarea id="code-editor" oninput="updatePreview()"></textarea>
+        <iframe id="preview"></iframe>
+    </div>
+
+    <script>
+        const editor = document.getElementById('code-editor');
+        const preview = document.getElementById('preview');
+
+        // This makes the preview update whenever you type
+        function updatePreview() {
+            const doc = preview.contentWindow.document;
+            doc.open();
+            doc.write(editor.value);
+            doc.close();
+        }
+
+        // This is the "AI" logic that changes your code based on your request
+        function askAI() {
+            const request = document.getElementById('user-request').value.toLowerCase();
+            let code = editor.value;
+
+            if (request.includes("background")) {
+                const color = request.split(" ").pop();
+                code = code.replace("<body>", `<body style="background: ${color};">`);
+            } 
+            else if (request.includes("button")) {
+                code = code.replace("</body>", `<button style="padding:10px; font-size:20px;">AI Button</button>\n</body>`);
+            }
+            else if (request.includes("text")) {
+                code = code.replace(/<p>.*?<\/p>/, `<p>AI has changed this text!</p>`);
+            }
+
+            editor.value = code;
+            updatePreview();
+            document.getElementById('user-request').value = ""; // clear input
+        }
+
+        // Start with some basic code
+        editor.value = "<html>\n<head>\n</head>\n<body>\n  <h1>My Netlify Site</h1>\n  <p>This is my website code.</p>\n</body>\n</html>";
+        updatePreview();
+    </script>
+</body>
+</html>
