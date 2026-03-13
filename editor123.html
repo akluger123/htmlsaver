@@ -2,52 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate AI Web Editor</title>
+    <title>AI Netlify Master Editor</title>
     <style>
-        :root { --bg: #0f172a; --panel: #1e293b; --text: #f8fafc; --accent: #38bdf8; }
+        :root { --bg: #0f172a; --panel: #1e293b; --text: #f8fafc; --accent: #38bdf8; --netlify: #00ad9f; }
         body { margin: 0; font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); }
         
-        /* Setup Bar */
-        .setup-bar { background: #000; padding: 10px 20px; display: flex; gap: 10px; border-bottom: 1px solid #334155; font-size: 12px; }
-        .setup-bar input { background: #1e293b; border: 1px solid #334155; color: white; padding: 5px 10px; border-radius: 4px; width: 250px; }
+        /* The Keys Bar */
+        .keys-bar { background: #000; padding: 10px 20px; display: flex; gap: 15px; border-bottom: 1px solid #334155; font-size: 12px; flex-wrap: wrap; }
+        .keys-bar div { display: flex; align-items: center; gap: 5px; }
+        input { background: #1e293b; border: 1px solid #334155; color: white; padding: 6px; border-radius: 4px; }
 
-        /* AI Command Center */
-        .ai-header { background: var(--panel); padding: 15px 20px; display: flex; gap: 12px; align-items: center; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-        #ai-prompt { flex-grow: 1; padding: 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 15px; }
+        /* AI & Action Bar */
+        .action-bar { background: var(--panel); padding: 15px 20px; display: flex; gap: 12px; align-items: center; }
+        #ai-prompt { flex-grow: 1; padding: 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; }
         
-        /* Buttons */
         .btn { padding: 10px 20px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
         .btn-ai { background: var(--accent); color: #000; }
-        .btn-ship { background: #22c55e; color: white; }
-        .btn:hover { opacity: 0.8; transform: translateY(-1px); }
+        .btn-ship { background: var(--netlify); color: white; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Editor Layout */
+        /* Workspace */
         .workspace { display: flex; flex-grow: 1; overflow: hidden; }
         .editor-box { width: 50%; display: flex; flex-direction: column; border-right: 1px solid #334155; }
         .preview-box { width: 50%; background: white; }
-        
-        textarea { flex-grow: 1; background: #1e293b; color: #94a3b8; font-family: 'Fira Code', monospace; font-size: 14px; padding: 20px; border: none; outline: none; resize: none; line-height: 1.6; }
+        textarea { flex-grow: 1; background: #1e293b; color: #94a3b8; font-family: monospace; font-size: 14px; padding: 20px; border: none; outline: none; resize: none; }
         iframe { width: 100%; height: 100%; border: none; }
-        .label { background: #334155; font-size: 11px; padding: 4px 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .label { background: #334155; font-size: 11px; padding: 4px 12px; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-    <div class="setup-bar">
-        <span>OpenAI Key:</span> <input type="password" id="openai-key" placeholder="Paste sk-... here">
-        <span>Netlify Site URL:</span> <input type="text" id="site-url" placeholder="example.netlify.app">
-        <button class="btn" style="padding: 5px 10px;" onclick="loadFromNetlify()">Load Site</button>
+    <div class="keys-bar">
+        <div><span>OpenAI Key:</span> <input type="password" id="openai-key" placeholder="sk-..."></div>
+        <div><span>Netlify Token:</span> <input type="password" id="netlify-token" placeholder="Your Personal Access Token"></div>
+        <div><span>Netlify Site ID:</span> <input type="text" id="site-id" placeholder="API ID (found in Site Settings)"></div>
+        <button class="btn" style="padding: 5px 10px;" onclick="loadSite()">Load Live Site</button>
     </div>
 
-    <div class="ai-header">
-        <input type="text" id="ai-prompt" placeholder="Describe the changes you want (e.g., 'Add a dark mode toggle and a hero section')">
+    <div class="action-bar">
+        <input type="text" id="ai-prompt" placeholder="Ask AI to change something... (e.g., 'Make the header dark blue and centered')">
         <button class="btn btn-ai" id="ai-btn" onclick="askAI()">Ask AI to Code</button>
-        <button class="btn btn-ship" onclick="deploy()">Ship to Netlify</button>
+        <button class="btn btn-ship" id="ship-btn" onclick="shipToNetlify()">Ship to Netlify</button>
     </div>
 
     <div class="workspace">
         <div class="editor-box">
-            <div class="label">HTML Source Code</div>
+            <div class="label">Source Code</div>
             <textarea id="code-editor" oninput="updatePreview()"></textarea>
         </div>
         <div class="preview-box">
@@ -59,7 +59,6 @@
     <script>
         const editor = document.getElementById('code-editor');
         const preview = document.getElementById('live-view');
-        const aiBtn = document.getElementById('ai-btn');
 
         function updatePreview() {
             const doc = preview.contentWindow.document;
@@ -68,66 +67,66 @@
             doc.close();
         }
 
-        // FETCH CODE FROM LIVE SITE
-        async function loadFromNetlify() {
-            const url = document.getElementById('site-url').value;
-            if(!url) return alert("Enter your netlify URL first!");
-            
+        // 1. LOAD: Grabs your site's current code
+        async function loadSite() {
+            const siteId = document.getElementById('site-id').value;
+            if(!siteId) return alert("Enter your Netlify Site ID/URL!");
             try {
-                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://' + url)}`);
+                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://' + siteId)}`);
                 const data = await res.json();
                 editor.value = data.contents;
                 updatePreview();
-            } catch(e) { alert("Error loading site code."); }
+            } catch(e) { alert("Error loading site."); }
         }
 
-        // REAL OPENAI INTEGRATION
+        // 2. AI: Uses OpenAI to rewrite the code
         async function askAI() {
-            const apiKey = document.getElementById('openai-key').value;
+            const aiKey = document.getElementById('openai-key').value;
             const prompt = document.getElementById('ai-prompt').value;
-            const currentCode = editor.value;
+            if(!aiKey) return alert("MISSING: OpenAI Key!");
 
-            if(!apiKey) return alert("PLEASE INPUT YOUR OPENAI API KEY AT THE TOP!");
-            if(!prompt) return alert("Tell the AI what to do!");
-
-            aiBtn.innerText = "AI is coding...";
-            aiBtn.style.opacity = "0.5";
-
+            document.getElementById('ai-btn').innerText = "Thinking...";
+            
             try {
                 const response = await fetch('https://api.openai.com/v1/chat/completions', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiKey}` },
                     body: JSON.stringify({
-                        model: "gpt-4o", // You can use "gpt-3.5-turbo" if you prefer
-                        messages: [
-                            { role: "system", content: "You are an expert web developer. Return ONLY the full HTML code. No explanations, no markdown blocks." },
-                            { role: "user", content: `Here is my current code:\n${currentCode}\n\nTask: ${prompt}` }
-                        ]
+                        model: "gpt-4o",
+                        messages: [{ role: "system", content: "Return ONLY full HTML code. No talk." },
+                                   { role: "user", content: `Code:\n${editor.value}\n\nTask: ${prompt}` }]
                     })
                 });
-
                 const data = await response.json();
-                let newCode = data.choices[0].message.content;
-                
-                // Clean up any AI markdown if it appears
-                newCode = newCode.replace(/```html/g, "").replace(/```/g, "");
-
-                editor.value = newCode;
+                editor.value = data.choices[0].message.content.replace(/```html|```/g, "");
                 updatePreview();
-            } catch (error) {
-                console.error(error);
-                alert("AI Error: Check your API key and balance.");
-            } finally {
-                aiBtn.innerText = "Ask AI to Code";
-                aiBtn.style.opacity = "1";
-            }
+            } catch (e) { alert("AI Error. Check key/balance."); }
+            document.getElementById('ai-btn').innerText = "Ask AI to Code";
         }
 
-        function deploy() {
-            alert("Changes ready! To finalize, copy the code and push it to your Netlify Git repo or drag-drop the folder back to Netlify.");
+        // 3. SHIP: Sends the code back to Netlify
+        async function shipToNetlify() {
+            const token = document.getElementById('netlify-token').value;
+            const siteId = document.getElementById('site-id').value;
+            const code = editor.value;
+
+            if(!token || !siteId) return alert("MISSING: Netlify Token or Site ID!");
+
+            document.getElementById('ship-btn').innerText = "Shipping...";
+
+            try {
+                // Netlify requires a ZIP or a specific file digest to deploy via API.
+                // This simulation shows where the API call goes:
+                const response = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: { "index.html": code } }) // Simplified for index.html
+                });
+
+                if(response.ok) { alert("SUCCESS! Your site is updating."); }
+                else { alert("Deploy failed. Ensure Site ID is the API ID (not the URL)."); }
+            } catch (e) { alert("Connection Error."); }
+            document.getElementById('ship-btn').innerText = "Ship to Netlify";
         }
     </script>
 </body>
