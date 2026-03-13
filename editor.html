@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Netlify Editor Clone</title>
+    <style>
+        :root { --sidebar: #1e1e1e; --editor-bg: #252526; --accent: #00ad9f; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; background: #000; color: white; }
+        
+        /* Top Navigation / AI Bar */
+        .top-nav { background: var(--sidebar); padding: 10px 20px; display: flex; gap: 15px; align-items: center; border-bottom: 1px solid #333; }
+        input[type="text"], input[type="password"] { background: #333; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; flex-grow: 1; }
+        .btn { background: var(--accent); border: none; color: white; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-ship { background: #2563eb; }
+
+        /* Layout */
+        .workspace { display: flex; flex-grow: 1; overflow: hidden; }
+        .editor-container { width: 50%; display: flex; flex-direction: column; border-right: 1px solid #333; }
+        .preview-container { width: 50%; background: white; }
+        
+        textarea { flex-grow: 1; background: var(--editor-bg); color: #d4d4d4; font-family: 'Consolas', monospace; font-size: 14px; padding: 20px; border: none; outline: none; resize: none; }
+        iframe { width: 100%; height: 100%; border: none; }
+        
+        .label { background: #333; font-size: 10px; padding: 2px 10px; text-transform: uppercase; color: #888; }
+    </style>
+</head>
+<body>
+
+<div class="top-nav">
+    <input type="password" id="netlify-token" placeholder="Paste Netlify Token Here">
+    <input type="text" id="site-id" placeholder="Site ID (e.g. my-site.netlify.app)">
+    <button class="btn" onclick="fetchSite()">Load Site</button>
+</div>
+
+<div class="top-nav" style="background: #2d2d2d;">
+    <input type="text" id="ai-prompt" placeholder="Ask AI: 'Add a purple header' or 'Make text bigger'...">
+    <button class="btn" onclick="runAI()">Apply AI Change</button>
+    <button class="btn btn-ship" onclick="shipToNetlify()">Ship Changes</button>
+</div>
+
+<div class="workspace">
+    <div class="editor-container">
+        <div class="label">Source Code</div>
+        <textarea id="code-editor" oninput="updatePreview()"></textarea>
+    </div>
+    <div class="preview-container">
+        <div class="label" style="background: #eee; color: #666;">Live Preview</div>
+        <iframe id="live-view"></iframe>
+    </div>
+</div>
+
+<script>
+    const editor = document.getElementById('code-editor');
+    const preview = document.getElementById('live-view');
+
+    function updatePreview() {
+        const doc = preview.contentWindow.document;
+        doc.open();
+        doc.write(editor.value);
+        doc.close();
+    }
+
+    // Connect to Netlify and grab your code
+    async function fetchSite() {
+        const siteUrl = document.getElementById('site-id').value;
+        try {
+            const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://' + siteUrl)}`);
+            const data = await response.json();
+            editor.value = data.contents;
+            updatePreview();
+        } catch (err) {
+            alert("Could not load site. Check the URL.");
+        }
+    }
+
+    // AI Logic (Simulated for this tool)
+    function runAI() {
+        const prompt = document.getElementById('ai-prompt').value.toLowerCase();
+        let code = editor.value;
+
+        if (prompt.includes("header") || prompt.includes("color")) {
+            code = code.replace("<body>", `<body style="background: #f0f0f0;"><header style="background:purple; color:white; padding:20px;">AI Modified Header</header>`);
+        } else {
+            code += `\n`;
+        }
+
+        editor.value = code;
+        updatePreview();
+    }
+
+    // Deployment Logic
+    async function shipToNetlify() {
+        const token = document.getElementById('netlify-token').value;
+        if(!token) return alert("Please enter your token first!");
+        
+        alert("Deploying to Netlify... (In a production app, this would use the /deployments API endpoint to upload your new code).");
+        console.log("Pushing new code to Netlify...");
+    }
+</script>
+
+</body>
+</html>
